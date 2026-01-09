@@ -1,9 +1,9 @@
--- ⚡ ULTRA BLATANT AUTO FISHING - OPTIMIZED FOR MAXIMUM SPEED
--- OPTIMIZED VERSION FOR 10+ FISH PER SECOND
+-- ⚠️ ULTRA BLATANT AUTO FISHING - GUI COMPATIBLE MODULE
+-- DESIGNED TO WORK WITH EXTERNAL GUI SYSTEM
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 
--- Network initialization (cached)
+-- Network initialization
 local netFolder = ReplicatedStorage
     :WaitForChild("Packages")
     :WaitForChild("_Index")
@@ -13,7 +13,7 @@ local netFolder = ReplicatedStorage
 local RF_ChargeFishingRod = netFolder:WaitForChild("RF/ChargeFishingRod")
 local RF_RequestMinigame = netFolder:WaitForChild("RF/RequestFishingMinigameStarted")
 local RF_CancelFishingInputs = netFolder:WaitForChild("RF/CancelFishingInputs")
-local RF_UpdateAutoFishingState = netFolder:WaitForChild("RF/UpdateAutoFishingState")
+local RF_UpdateAutoFishingState = netFolder:WaitForChild("RF/UpdateAutoFishingState")  -- ⭐ ADDED untuk stop function
 local RE_FishingCompleted = netFolder:WaitForChild("RE/FishingCompleted")
 local RE_MinigameChanged = netFolder:WaitForChild("RE/FishingMinigameChanged")
 
@@ -25,29 +25,28 @@ UltraBlatant.Stats = {
     startTime = 0
 }
 
--- Default settings (will be overridden by GUI)
+-- Settings (sesuai dengan pattern GUI kamu)
 UltraBlatant.Settings = {
-    CompleteDelay = 0.001,    -- Minimal default
-    CancelDelay = 0.001       -- Minimal default
+    CompleteDelay = 0.001,    -- Delay sebelum complete
+    CancelDelay = 0.001       -- Delay setelah complete sebelum cancel
 }
 
 ----------------------------------------------------------------
 -- CORE FUNCTIONS
 ----------------------------------------------------------------
 
--- Optimized: Use spawn but with minimal overhead
 local function safeFire(func)
     task.spawn(function()
         pcall(func)
     end)
 end
 
--- MAIN SPAM LOOP - Maximum speed
+-- MAIN SPAM LOOP
 local function ultraSpamLoop()
     while UltraBlatant.Active do
         local currentTime = tick()
         
-        -- Fire both calls immediately (non-blocking)
+        -- 1x CHARGE & REQUEST (CASTING)
         safeFire(function()
             RF_ChargeFishingRod:InvokeServer({[1] = currentTime})
         end)
@@ -57,7 +56,7 @@ local function ultraSpamLoop()
         
         UltraBlatant.Stats.castCount = UltraBlatant.Stats.castCount + 1
         
-        -- Wait CompleteDelay then fire complete
+        -- Wait CompleteDelay then fire complete once
         task.wait(UltraBlatant.Settings.CompleteDelay)
         
         safeFire(function()
@@ -72,7 +71,7 @@ local function ultraSpamLoop()
     end
 end
 
--- BACKUP LISTENER - Non-blocking
+-- BACKUP LISTENER
 RE_MinigameChanged.OnClientEvent:Connect(function(state)
     if not UltraBlatant.Active then return end
     
