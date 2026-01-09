@@ -258,17 +258,66 @@ print("━━━━━━━━━━━━━━━━━━━━━━")
 print("🔄 LYNX GUI v2.3 - LOADING")
 print("━━━━━━━━━━━━━━━━━━━━━━")
 
--- Load Security Loader
+-- Load Security Loader (with improved error handling)
 local SecurityLoader
 local loaderSuccess, loaderError = pcall(function()
-    SecurityLoader = loadstring(game:HttpGet("https://raw.githubusercontent.com/akmiliadevi/Tugas_Kuliah/refs/heads/main/SecurityLoader.lua"))()
+    -- Step 1: Fetch script from GitHub
+    local httpSuccess, httpResult = pcall(function()
+        return game:HttpGet("https://raw.githubusercontent.com/ruditech1337-arch/pa/refs/heads/main/SecurityLoader.lua")
+    end)
+    
+    if not httpSuccess then
+        error("HttpGet failed: " .. tostring(httpResult))
+    end
+    
+    if not httpResult or type(httpResult) ~= "string" or #httpResult == 0 then
+        error("HttpGet returned empty or invalid result")
+    end
+    
+    -- Step 2: Load the script string
+    local loadFunc, loadErr = loadstring(httpResult)
+    if not loadFunc then
+        error("loadstring failed: " .. tostring(loadErr))
+    end
+    
+    -- Step 3: Execute the script
+    local result = loadFunc()
+    if not result then
+        error("SecurityLoader script returned nil")
+    end
+    
+    if type(result) ~= "table" then
+        error("SecurityLoader did not return a table (got: " .. type(result) .. ")")
+    end
+    
+    -- Step 4: Verify SecurityLoader structure
+    if not result.LoadModule or type(result.LoadModule) ~= "function" then
+        error("SecurityLoader.LoadModule function not found or invalid")
+    end
+    
+    SecurityLoader = result
 end)
 
 if not loaderSuccess or not SecurityLoader then
     local errorMsg = loaderError and tostring(loaderError) or "Unknown error"
     LoadingNotification.Complete(false, 0, 1)
     SendNotification("❌ CRITICAL ERROR", "SecurityLoader failed!", 10)
-    warn("❌ CRITICAL: SecurityLoader failed to load - " .. errorMsg)
+    warn("❌ CRITICAL: SecurityLoader failed to load")
+    warn("❌ Error details: " .. errorMsg)
+    warn("❌ Possible causes:")
+    warn("   1. GitHub URL is inaccessible")
+    warn("   2. SecurityLoader.lua file is corrupted")
+    warn("   3. Network connection issue")
+    warn("   4. SecurityLoader script has syntax errors")
+    warn("❌ Script cannot continue without SecurityLoader")
+    return
+end
+
+-- Final verification
+if type(SecurityLoader) ~= "table" or not SecurityLoader.LoadModule then
+    LoadingNotification.Complete(false, 0, 1)
+    SendNotification("❌ CRITICAL ERROR", "SecurityLoader invalid!", 10)
+    warn("❌ CRITICAL: SecurityLoader structure is invalid")
     return
 end
 
@@ -1658,7 +1707,7 @@ end
 -- Load ConfigSystem
 local ConfigSystem
 local configSuccess, configError = pcall(function()
-    ConfigSystem = loadstring(game:HttpGet("https://raw.githubusercontent.com/akmiliadevi/Tugas_Kuliah/refs/heads/main/Project_code/Misc/SaveConfig.lua"))()
+    ConfigSystem = loadstring(game:HttpGet("hhttps://raw.githubusercontent.com/ruditech1337-arch/pa/refs/heads/main/save2.lua"))()
 end)
 
 if not configSuccess or not ConfigSystem then
