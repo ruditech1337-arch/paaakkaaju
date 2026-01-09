@@ -31,6 +31,10 @@ UltraBlatant.Settings = {
     CancelDelay = 0.001       -- Delay setelah complete sebelum cancel
 }
 
+-- State tracking untuk hook detection
+local WaitingHook = false
+local HookDetected = false
+
 ----------------------------------------------------------------
 -- CORE FUNCTIONS
 ----------------------------------------------------------------
@@ -41,10 +45,12 @@ local function safeFire(func)
     end)
 end
 
--- MAIN SPAM LOOP
+-- MAIN SPAM LOOP dengan hook detection priority
 local function ultraSpamLoop()
     while UltraBlatant.Active do
         local currentTime = tick()
+        HookDetected = false
+        WaitingHook = true
         
         -- 1x CHARGE & REQUEST (CASTING)
         safeFire(function()
@@ -56,12 +62,17 @@ local function ultraSpamLoop()
         
         UltraBlatant.Stats.castCount = UltraBlatant.Stats.castCount + 1
         
-        -- Wait CompleteDelay then fire complete once
+        -- Wait CompleteDelay - hook detection akan complete lebih cepat jika hook terdeteksi
         task.wait(UltraBlatant.Settings.CompleteDelay)
         
-        safeFire(function()
-            RE_FishingCompleted:FireServer()
-        end)
+        -- Complete fishing hanya jika hook belum terdeteksi (hook detection sudah handle jika terdeteksi)
+        if not HookDetected and UltraBlatant.Active then
+            safeFire(function()
+                RE_FishingCompleted:FireServer()
+            end)
+        end
+        
+        WaitingHook = false
         
         -- Cancel with CancelDelay
         task.wait(UltraBlatant.Settings.CancelDelay)
@@ -71,17 +82,39 @@ local function ultraSpamLoop()
     end
 end
 
--- BACKUP LISTENER
+-- OPTIMIZED HOOK DETECTION - Faster response dengan reliability
 RE_MinigameChanged.OnClientEvent:Connect(function(state)
     if not UltraBlatant.Active then return end
+    if not WaitingHook then return end
+    
+    -- Deteksi hook state
+    if typeof(state) == "string" and string.find(string.lower(state), "hook") then
+        HookDetected = true
+        WaitingHook = false
+        
+        -- Complete segera setelah hook terdeteksi (hook detection priority)
+        task.spawn(function()
+            safeFire(function()
+                RE_FishingCompleted:FireServer()
+            end)
+            
+            task.wait(UltraBlatant.Settings.CancelDelay)
+            safeFire(function()
+                RF_CancelFishingInputs:InvokeServer()
+            end)
+        end)
+    end
+end)
+
+-- FishCaught event untuk backup detection
+local RE_FishCaught = netFolder:WaitForChild("RE/FishCaught")
+RE_FishCaught.OnClientEvent:Connect(function(name, data)
+    if not UltraBlatant.Active then return end
+    
+    HookDetected = true
+    WaitingHook = false
     
     task.spawn(function()
-        task.wait(UltraBlatant.Settings.CompleteDelay)
-        
-        safeFire(function()
-            RE_FishingCompleted:FireServer()
-        end)
-        
         task.wait(UltraBlatant.Settings.CancelDelay)
         safeFire(function()
             RF_CancelFishingInputs:InvokeServer()
