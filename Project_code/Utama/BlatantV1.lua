@@ -25,32 +25,33 @@ UltraBlatant.Stats = {
     startTime = 0
 }
 
--- Optimized default settings for maximum speed
+-- Default settings (will be overridden by GUI)
 UltraBlatant.Settings = {
-    CompleteDelay = 0.2,      -- Optimized: reduced for faster cycle
-    CancelDelay = 0.15        -- Optimized: reduced for faster cycle
+    CompleteDelay = 0.001,    -- Minimal default
+    CancelDelay = 0.001       -- Minimal default
 }
 
 ----------------------------------------------------------------
--- OPTIMIZED CORE FUNCTIONS
+-- CORE FUNCTIONS
 ----------------------------------------------------------------
 
--- Direct invocation without spawn for better performance
-local function safeInvoke(func)
-    local success, err = pcall(func)
-    if not success then
-        warn("⚠️ BlatantV1 Network error:", err)
-    end
+-- Optimized: Use spawn but with minimal overhead
+local function safeFire(func)
+    task.spawn(function()
+        pcall(func)
+    end)
 end
 
--- OPTIMIZED MAIN SPAM LOOP - Maximum speed
+-- MAIN SPAM LOOP - Maximum speed
 local function ultraSpamLoop()
     while UltraBlatant.Active do
         local currentTime = tick()
         
-        -- Batch network calls together for better performance
-        safeInvoke(function()
+        -- Fire both calls immediately (non-blocking)
+        safeFire(function()
             RF_ChargeFishingRod:InvokeServer({[1] = currentTime})
+        end)
+        safeFire(function()
             RF_RequestMinigame:InvokeServer(1, 0, currentTime)
         end)
         
@@ -59,35 +60,33 @@ local function ultraSpamLoop()
         -- Wait CompleteDelay then fire complete
         task.wait(UltraBlatant.Settings.CompleteDelay)
         
-        -- Direct invoke for faster response
-        safeInvoke(function()
+        safeFire(function()
             RE_FishingCompleted:FireServer()
         end)
         
-        -- Cancel with minimal delay
+        -- Cancel with CancelDelay
         task.wait(UltraBlatant.Settings.CancelDelay)
-        safeInvoke(function()
+        safeFire(function()
             RF_CancelFishingInputs:InvokeServer()
         end)
-        
-        -- Minimal delay before next cycle (removed unnecessary wait)
     end
 end
 
--- OPTIMIZED BACKUP LISTENER - Faster response
+-- BACKUP LISTENER - Non-blocking
 RE_MinigameChanged.OnClientEvent:Connect(function(state)
     if not UltraBlatant.Active then return end
     
-    -- Direct execution instead of spawn for faster response
-    task.wait(UltraBlatant.Settings.CompleteDelay)
-    
-    safeInvoke(function()
-        RE_FishingCompleted:FireServer()
-    end)
-    
-    task.wait(UltraBlatant.Settings.CancelDelay)
-    safeInvoke(function()
-        RF_CancelFishingInputs:InvokeServer()
+    task.spawn(function()
+        task.wait(UltraBlatant.Settings.CompleteDelay)
+        
+        safeFire(function()
+            RE_FishingCompleted:FireServer()
+        end)
+        
+        task.wait(UltraBlatant.Settings.CancelDelay)
+        safeFire(function()
+            RF_CancelFishingInputs:InvokeServer()
+        end)
     end)
 end)
 
@@ -122,7 +121,7 @@ function UltraBlatant.Start()
     task.spawn(ultraSpamLoop)
 end
 
--- ⭐ ENHANCED Stop function - Optimized
+-- ⭐ ENHANCED Stop function
 function UltraBlatant.Stop()
     if not UltraBlatant.Active then 
         return
@@ -131,15 +130,15 @@ function UltraBlatant.Stop()
     UltraBlatant.Active = false
     
     -- ⭐ Nyalakan auto fishing game (biarkan tetap nyala)
-    safeInvoke(function()
+    safeFire(function()
         RF_UpdateAutoFishingState:InvokeServer(true)
     end)
     
-    -- Reduced wait time from 0.2 to 0.1
-    task.wait(0.1)
+    -- Wait sebentar untuk game process
+    task.wait(0.2)
     
     -- Cancel fishing inputs untuk memastikan karakter berhenti
-    safeInvoke(function()
+    safeFire(function()
         RF_CancelFishingInputs:InvokeServer()
     end)
     
